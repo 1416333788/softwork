@@ -3,6 +3,7 @@ package com.zhang.generator;
 import com.zhang.model.Expression;
 import com.zhang.model.Fraction;
 import com.zhang.model.Problem;
+import com.zhang.utils.RPNEvaluator;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -29,12 +30,11 @@ public class ProblemGenerator {
 
         for (int i = 0; i < count; i++) {
             Problem problem = generateUniqueProblem();
-            problems.add(problem);
-
-            // 如果经过多次尝试后仍难以生成唯一的题目，则退出循环
             if (problem == null) {
+                System.err.println("Warning: Could only generate " + i + " unique problems.");
                 break;
             }
+            problems.add(problem);
         }
 
         // 将题目写入文件
@@ -48,9 +48,9 @@ public class ProblemGenerator {
             }
         }
 
-        System.out.println("已生成 " + problems.size() + " 道题目。");
-        System.out.println("题目已保存到 Exercises.txt");
-        System.out.println("答案已保存到 Answers.txt");
+        System.out.println("Generated " + problems.size() + " problems.");
+        System.out.println("Problems saved to Exercises.txt");
+        System.out.println("Answers saved to Answers.txt");
     }
 
     /**
@@ -58,30 +58,44 @@ public class ProblemGenerator {
      */
     private Problem generateUniqueProblem() {
         // 生成唯一题目的最大尝试次数
-        final int MAX_ATTEMPTS = 1000;
+        final int MAX_ATTEMPTS = 10000;
 
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             // 生成一个最多包含3个运算符的表达式
             Expression expression = expressionGenerator.generateExpression(3);
+
+            //检查表达式是否有效，至少包含一个运算符
+            if(!isValidExpression(expression)){
+                continue;
+            }
+
+            // 获取表达式的规范形式
             String signature = getCanonicalForm(expression);
 
             // 检查题目是否重复
             if (!problemSignatures.contains(signature)) {
                 problemSignatures.add(signature);
-                Fraction answer = expression.evaluate();
+
+                // 使用RPN计算答案
+                Fraction answer = RPNEvaluator.evaluateRPN(RPNEvaluator.toRPN(expression));
                 return new Problem(expression, answer);
             }
         }
 
-        System.err.println("经过多次尝试后，无法生成更多的唯一题目。");
+        System.err.println("After multiple attempts, could not generate more unique problems.");
         return null;
+    }
+
+    private boolean isValidExpression(Expression expression) {
+        String expr =expression.toString();
+        return  expr.contains("+")||expr.contains("-")||expr.contains("×")||expr.contains("÷");
     }
 
     /**
      * 获取表达式的规范形式，用于检测重复题目
-     * 注意：这是一个简化的实现，完整的解决方案应使用更复杂的算法来检测代数等价表达式
+     * 使用RPN表示并考虑操作符的可交换性
      */
     private String getCanonicalForm(Expression expression) {
-        return expression.toString();
+        return RPNEvaluator.getCanonicalRPN(expression);
     }
 }

@@ -1,6 +1,9 @@
 package com.zhang.grader;
 
+import com.zhang.model.Expression;
 import com.zhang.model.Fraction;
+import com.zhang.utils.ExpressionParser;
+import com.zhang.utils.RPNEvaluator;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -12,44 +15,50 @@ public class Grader {
 
     /**
      * 评估用户答案并生成评分报告
-     * @param exerciseFile 题目文件路径
-     * @param answerFile 答案文件路径
+     * @param exerciseFile 练习题文件的路径
+     * @param answerFile 答案文件的路径
      */
     public void grade(String exerciseFile, String answerFile) throws IOException {
         List<String> exercises = readLines(exerciseFile);
         List<String> userAnswers = readLines(answerFile);
 
-        List<Integer> correctProblems = new ArrayList<>(); // 正确题目编号列表
-        List<Integer> wrongProblems = new ArrayList<>(); // 错误题目编号列表
+        List<Integer> correctProblems = new ArrayList<>(); // 记录答对的题号
+        List<Integer> wrongProblems = new ArrayList<>(); // 记录答错的题号
 
-        // 检查题目和答案数量是否匹配
+        // 检查题目数量和答案数量是否匹配
         int minSize = Math.min(exercises.size(), userAnswers.size());
 
         for (int i = 0; i < minSize; i++) {
             String exercise = exercises.get(i);
             String userAnswer = userAnswers.get(i);
 
-            // 提取题目编号和期望答案
+            // 提取题号和标准答案
             int problemNumber = extractProblemNumber(exercise);
-            Fraction expectedAnswer = calculateAnswer(exercise);
-            Fraction providedAnswer = parseAnswer(userAnswer);
 
-            // 判断答案是否正确
-            if (expectedAnswer != null && providedAnswer != null &&
-                    expectedAnswer.equals(providedAnswer)) {
-                correctProblems.add(problemNumber);
-            } else {
+            try {
+                Fraction expectedAnswer = calculateAnswer(exercise);
+                Fraction providedAnswer = parseAnswer(userAnswer);
+
+                // 检查用户答案是否正确
+                if (expectedAnswer != null && providedAnswer != null &&
+                        expectedAnswer.equals(providedAnswer)) {
+                    correctProblems.add(problemNumber);
+                } else {
+                    wrongProblems.add(problemNumber);
+                }
+            } catch (Exception e) {
                 wrongProblems.add(problemNumber);
+                System.err.println("处理题目 " + problemNumber + " 时出错: " + e.getMessage());
             }
         }
 
-        // 将评分结果写入Grade.txt
+        // 将评分结果写入 Grade.txt 文件
         try (PrintWriter writer = new PrintWriter(new FileWriter("Grade.txt"))) {
-            writer.println("Correct: " + correctProblems.size() + " " + formatNumberList(correctProblems));
-            writer.println("Wrong: " + wrongProblems.size() + " " + formatNumberList(wrongProblems));
+            writer.println("正确: " + correctProblems.size() + " " + formatNumberList(correctProblems));
+            writer.println("错误: " + wrongProblems.size() + " " + formatNumberList(wrongProblems));
         }
 
-        System.out.println("评分完成。结果已保存到Grade.txt");
+        System.out.println("评分完成，结果已保存到 Grade.txt");
     }
 
     /**
@@ -67,7 +76,7 @@ public class Grader {
     }
 
     /**
-     * 从行中提取题目编号
+     * 从题目行中提取题号
      */
     private int extractProblemNumber(String line) {
         Pattern pattern = Pattern.compile("^(\\d+)\\.");
@@ -79,22 +88,27 @@ public class Grader {
     }
 
     /**
-     * 计算题目的答案
-     * 注：完整实现需要一个表达式解析器
-     * 这里简单返回null作为占位符
+     * 计算题目的标准答案
      */
     private Fraction calculateAnswer(String exercise) {
-        // 需要实现表达式解析和求值
-        // 完整实现需要表达式解析器
-        return null;
+        // 提取题目中的表达式
+        String expressionStr = exercise.replaceAll("^\\d+\\.\\s+", "").trim();
+        expressionStr = expressionStr.replaceAll("\\s*=\\s*$", "").trim();
+
+        // 解析表达式字符串为 Expression 对象
+        Expression expr = ExpressionParser.parse(expressionStr);
+
+        // 转换为逆波兰表达式（RPN）并计算结果
+        List<Object> rpnTokens = RPNEvaluator.toRPN(expr);
+        return RPNEvaluator.evaluateRPN(rpnTokens);
     }
 
     /**
-     * 解析答案行中的分数
+     * 解析答案行中的用户答案
      */
     private Fraction parseAnswer(String answerLine) {
-        // 提取答案部分（题号之后的内容）
-        Pattern pattern = Pattern.compile("^\\d+\\. (.+)$");
+        // 提取答案部分（去除题号）
+        Pattern pattern = Pattern.compile("^\\d+\\.\\s+(.+)$");
         Matcher matcher = pattern.matcher(answerLine);
         if (matcher.find()) {
             String answerStr = matcher.group(1).trim();
@@ -104,7 +118,7 @@ public class Grader {
     }
 
     /**
-     * 格式化数字列表为(1, 2, 3)格式
+     * 格式化数字列表，例如 (1, 2, 3)
      */
     private String formatNumberList(List<Integer> numbers) {
         if (numbers.isEmpty()) {
@@ -122,3 +136,4 @@ public class Grader {
         return sb.toString();
     }
 }
+
