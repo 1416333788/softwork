@@ -56,7 +56,7 @@ public class ProblemGenerator {
     /**
      * 生成一个唯一的题目（不与之前生成的重复）
      */
-    private Problem generateUniqueProblem() {
+    public Problem generateUniqueProblem() {
         // 生成唯一题目的最大尝试次数
         final int MAX_ATTEMPTS = 10000;
 
