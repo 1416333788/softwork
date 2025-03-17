@@ -114,7 +114,7 @@ public class ExpressionGenerator {
     /**
      * 检查表达式计算过程中是否有负数
      */
-    private boolean hasNegativeIntermediates(Expression expr) {
+    public boolean hasNegativeIntermediates(Expression expr) {
         if (expr.isLeaf()) {
             return expr.getValue().isNegative();
         }
@@ -137,7 +137,7 @@ public class ExpressionGenerator {
     /**
      * 检查表达式中的除法操作是否产生非真分数结果
      */
-    private boolean hasDivisionWithImproperResult(Expression expr) {
+    public boolean hasDivisionWithImproperResult(Expression expr) {
         if (expr.isLeaf()) {
             return false;
         }
